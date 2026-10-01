@@ -8,5 +8,4 @@ public interface OtpRepository extends JpaRepository<Otp, Long> {
     //
     Optional<Otp> findByMobileNumber(String mobileNumber);
 
-    void deleteByMobileNumber();
 }

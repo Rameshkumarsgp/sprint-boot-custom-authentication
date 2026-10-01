@@ -54,6 +54,7 @@ public class OtpService {
 
         if (hasher.matches(mobileNumber, code, otp.getOtpHash())) {
             repository.delete(otp);
+            return  OtpResult.VERIFIED;
         }
 
         otp.setAttempts(otp.getAttempts() + 1);
