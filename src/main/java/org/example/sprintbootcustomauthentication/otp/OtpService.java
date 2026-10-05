@@ -1,12 +1,13 @@
 package org.example.sprintbootcustomauthentication.otp;
 
-import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.example.sprintbootcustomauthentication.otp.internal.Otp;
 import org.example.sprintbootcustomauthentication.otp.internal.OtpGenerator;
 import org.example.sprintbootcustomauthentication.otp.internal.OtpHasher;
 import org.example.sprintbootcustomauthentication.otp.internal.OtpRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 
@@ -24,7 +25,7 @@ public class OtpService {
     public void issue(String mobileNumber) {
         String code = generator.generate();
 
-        Otp otp = repository.findByMobileNumber(mobileNumber).orElseGet(Otp::new);
+        Otp otp = repository.findByMobileNumberForUpdate(mobileNumber).orElseGet(Otp::new);
         otp.setMobileNumber(mobileNumber);
         otp.setOtpHash(hasher.hash(mobileNumber, code));
         otp.setExpiresAt(Instant.now().plus(properties.ttl()));
@@ -35,16 +36,16 @@ public class OtpService {
 
     }
 
-    @Transactional
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public OtpResult verify(String mobileNumber, String code) {
-        //
-        Otp otp = repository.findByMobileNumber(mobileNumber).orElse(null);
+        Otp otp = repository.findByMobileNumberForUpdate(mobileNumber).orElse(null);
 
         if (otp == null) {
             return OtpResult.NOT_FOUND;
         }
 
         if (Instant.now().isAfter(otp.getExpiresAt())) {
+            repository.delete(otp);
             return OtpResult.EXPIRED;
         }
 
@@ -54,11 +55,10 @@ public class OtpService {
 
         if (hasher.matches(mobileNumber, code, otp.getOtpHash())) {
             repository.delete(otp);
-            return  OtpResult.VERIFIED;
+            return OtpResult.VERIFIED;
         }
 
         otp.setAttempts(otp.getAttempts() + 1);
-        repository.save(otp);
         return OtpResult.INVALID;
     }
 }
