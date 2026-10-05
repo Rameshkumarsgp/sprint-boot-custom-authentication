@@ -51,11 +51,15 @@ class OtpServiceTest {
         lenient().when(generator.generate()).thenReturn(CODE);
         lenient().when(repository.findByMobileNumberForUpdate(MOBILE))
                 .thenAnswer(invocation -> Optional.ofNullable(stored.get()));
-        lenient().when(repository.save(any(Otp.class)))
-                .thenAnswer(invocation -> {
-                    stored.set(invocation.getArgument(0));
-                    return invocation.getArgument(0);
-                });
+        lenient().doAnswer(invocation -> {
+            Otp otp = new Otp();
+            otp.setMobileNumber(invocation.getArgument(0));
+            otp.setOtpHash(invocation.getArgument(1));
+            otp.setExpiresAt(invocation.getArgument(2));
+            otp.setAttempts(0);
+            stored.set(otp);
+            return null;
+        }).when(repository).upsert(any(), any(), any());
         lenient().doAnswer(invocation -> {
             stored.set(null);
             return null;

@@ -27,12 +27,10 @@ public class OtpService {
     public void issue(String mobileNumber) {
         String code = generator.generate();
 
-        Otp otp = repository.findByMobileNumberForUpdate(mobileNumber).orElseGet(Otp::new);
-        otp.setMobileNumber(mobileNumber);
-        otp.setOtpHash(hasher.hash(mobileNumber, code));
-        otp.setExpiresAt(Instant.now(clock).plus(properties.ttl()));
-        otp.setAttempts(0);
-        repository.save(otp);
+        repository.upsert(
+                mobileNumber,
+                hasher.hash(mobileNumber, code),
+                Instant.now(clock).plus(properties.ttl()));
 
         sender.send(mobileNumber, code);
 
