@@ -27,14 +27,14 @@ public class AuthController {
     }
 
     @PostMapping("/verify")
-    public ResponseEntity<Map<String, Object>> verify(@Valid @RequestBody OtpVerifyRequest body) {
+    public ResponseEntity<?> verify(@Valid @RequestBody OtpVerifyRequest body) {
         OtpResult result = otpService.verify(body.mobileNumber(), body.otp());
         return switch (result) {
             case VERIFIED -> ResponseEntity.ok(Map.of("verified", true));
             case TOO_MANY_ATTEMPTS -> ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
-                    .body(Map.of("error", "Too many attempts. Request a new OTP."));
+                    .body(ApiError.of("TOO_MANY_ATTEMPTS"));
             case INVALID, EXPIRED, NOT_FOUND -> ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(Map.of("error", "Invalid or expired OTP"));
+                    .body(ApiError.of("INVALID_OR_EXPIRED_OTP"));
         };
     }
 
