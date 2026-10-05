@@ -1,61 +1,106 @@
 package org.example.sprintbootcustomauthentication.otp;
 
+import org.example.sprintbootcustomauthentication.otp.internal.Otp;
+import org.example.sprintbootcustomauthentication.otp.internal.OtpGenerator;
+import org.example.sprintbootcustomauthentication.otp.internal.OtpHasher;
+import org.example.sprintbootcustomauthentication.otp.internal.OtpRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Primary;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Optional;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
-@SpringBootTest
+@ExtendWith(MockitoExtension.class)
 class OtpServiceTest {
 
     private static final String MOBILE = "9876543210";
+    private static final String CODE = "483921";
 
-    @TestConfiguration
-    static class ClockTestConfig {
+    @Mock
+    OtpRepository repository;
 
-        @Bean
-        @Primary
-        MutableClock testClock() {
-            return new MutableClock(Instant.now());
-        }
-    }
+    @Mock
+    OtpGenerator generator;
 
-    @Autowired
-    OtpService otpService;
-
-    @Autowired
-    MutableClock clock;
-
-    @MockitoBean
+    @Mock
     OtpSender sender;
 
-    private String issueAndCaptureCode() {
+    private final OtpProperties properties = new OtpProperties(6, Duration.ofMinutes(5), 5, "test-secret");
+    private final MutableClock clock = new MutableClock(Instant.parse("2026-01-01T00:00:00Z"));
+    private final AtomicReference<Otp> stored = new AtomicReference<>();
+
+    private OtpHasher hasher;
+    private OtpService otpService;
+
+    @BeforeEach
+    void setUp() {
+        hasher = new OtpHasher(properties);
+        otpService = new OtpService(repository, generator, hasher, sender, properties, clock);
+
+        lenient().when(generator.generate()).thenReturn(CODE);
+        lenient().when(repository.findByMobileNumberForUpdate(MOBILE))
+                .thenAnswer(invocation -> Optional.ofNullable(stored.get()));
+        lenient().when(repository.save(any(Otp.class)))
+                .thenAnswer(invocation -> {
+                    stored.set(invocation.getArgument(0));
+                    return invocation.getArgument(0);
+                });
+        lenient().doAnswer(invocation -> {
+            stored.set(null);
+            return null;
+        }).when(repository).delete(any(Otp.class));
+    }
+
+    @Test
+    void issueStoresHashedCodeAndSendsPlainCode() {
+        // given
+
+        // when
         otpService.issue(MOBILE);
-        ArgumentCaptor<String> code = ArgumentCaptor.forClass(String.class);
-        verify(sender, atLeastOnce()).send(eq(MOBILE), code.capture());
-        return code.getValue();
+
+        // then
+        verify(sender).send(MOBILE, CODE);
+        Otp otp = stored.get();
+        assertThat(otp.getOtpHash()).isEqualTo(hasher.hash(MOBILE, CODE)).isNotEqualTo(CODE);
+        assertThat(otp.getExpiresAt()).isEqualTo(clock.instant().plus(Duration.ofMinutes(5)));
+        assertThat(otp.getAttempts()).isZero();
+    }
+
+    @Test
+    void issuingAgainReplacesTheOldOtp() {
+        // given
+        otpService.issue(MOBILE);
+        otpService.verify(MOBILE, "000000");
+
+        // when
+        when(generator.generate()).thenReturn("222222");
+        otpService.issue(MOBILE);
+
+        // then
+        assertThat(stored.get().getAttempts()).isZero();
+        assertThat(otpService.verify(MOBILE, CODE)).isEqualTo(OtpResult.INVALID);
+        assertThat(otpService.verify(MOBILE, "222222")).isEqualTo(OtpResult.VERIFIED);
     }
 
     @Test
     void correctCodeVerifiesOnlyOnce() {
         // given
-        String code = issueAndCaptureCode();
+        otpService.issue(MOBILE);
 
         // when
-        OtpResult first = otpService.verify(MOBILE, code);
-        OtpResult second = otpService.verify(MOBILE, code);
+        OtpResult first = otpService.verify(MOBILE, CODE);
+        OtpResult second = otpService.verify(MOBILE, CODE);
 
         // then
         assertThat(first).isEqualTo(OtpResult.VERIFIED);
@@ -63,27 +108,28 @@ class OtpServiceTest {
     }
 
     @Test
-    void wrongCodeIsInvalid() {
+    void wrongCodeIsInvalidAndCountsAnAttempt() {
         // given
-        issueAndCaptureCode();
+        otpService.issue(MOBILE);
 
         // when
         OtpResult result = otpService.verify(MOBILE, "000000");
 
         // then
         assertThat(result).isEqualTo(OtpResult.INVALID);
+        assertThat(stored.get().getAttempts()).isEqualTo(1);
     }
 
     @Test
     void lockedAfterTooManyAttempts() {
         // given
-        String code = issueAndCaptureCode();
+        otpService.issue(MOBILE);
 
         // when
         for (int i = 0; i < 5; i++) {
             otpService.verify(MOBILE, "000000");
         }
-        OtpResult result = otpService.verify(MOBILE, code);
+        OtpResult result = otpService.verify(MOBILE, CODE);
 
         // then
         assertThat(result).isEqualTo(OtpResult.TOO_MANY_ATTEMPTS);
@@ -92,15 +138,26 @@ class OtpServiceTest {
     @Test
     void expiredCodeIsRejectedAndRemoved() {
         // given
-        String code = issueAndCaptureCode();
+        otpService.issue(MOBILE);
 
         // when
         clock.advance(Duration.ofMinutes(6));
-        OtpResult first = otpService.verify(MOBILE, code);
-        OtpResult second = otpService.verify(MOBILE, code);
+        OtpResult first = otpService.verify(MOBILE, CODE);
+        OtpResult second = otpService.verify(MOBILE, CODE);
 
         // then
         assertThat(first).isEqualTo(OtpResult.EXPIRED);
         assertThat(second).isEqualTo(OtpResult.NOT_FOUND);
+    }
+
+    @Test
+    void unknownMobileIsNotFound() {
+        // given
+
+        // when
+        OtpResult result = otpService.verify(MOBILE, CODE);
+
+        // then
+        assertThat(result).isEqualTo(OtpResult.NOT_FOUND);
     }
 }

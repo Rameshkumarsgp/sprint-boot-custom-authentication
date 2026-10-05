@@ -15,7 +15,7 @@ public class OtpHasher {
     public static final String ALGORITHM = "HmacSHA256";
     private final SecretKeySpec key;
 
-    OtpHasher(OtpProperties properties) {
+    public OtpHasher(OtpProperties properties) {
         this.key =
                 new SecretKeySpec(properties.secret().getBytes(StandardCharsets.UTF_8), ALGORITHM);
     }
