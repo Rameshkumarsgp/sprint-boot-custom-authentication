@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.time.Instant;
 
 @Service
@@ -20,6 +21,7 @@ public class OtpService {
     private final OtpHasher hasher;
     private final OtpSender sender;
     private final OtpProperties properties;
+    private final Clock clock;
 
     @Transactional
     public void issue(String mobileNumber) {
@@ -28,7 +30,7 @@ public class OtpService {
         Otp otp = repository.findByMobileNumberForUpdate(mobileNumber).orElseGet(Otp::new);
         otp.setMobileNumber(mobileNumber);
         otp.setOtpHash(hasher.hash(mobileNumber, code));
-        otp.setExpiresAt(Instant.now().plus(properties.ttl()));
+        otp.setExpiresAt(Instant.now(clock).plus(properties.ttl()));
         otp.setAttempts(0);
         repository.save(otp);
 
@@ -44,7 +46,7 @@ public class OtpService {
             return OtpResult.NOT_FOUND;
         }
 
-        if (Instant.now().isAfter(otp.getExpiresAt())) {
+        if (Instant.now(clock).isAfter(otp.getExpiresAt())) {
             repository.delete(otp);
             return OtpResult.EXPIRED;
         }
