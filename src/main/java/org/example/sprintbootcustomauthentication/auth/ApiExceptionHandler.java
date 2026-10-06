@@ -1,6 +1,7 @@
 package org.example.sprintbootcustomauthentication.auth;
 
 import lombok.extern.slf4j.Slf4j;
+import org.example.sprintbootcustomauthentication.otp.InvalidMobileNumberException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -38,6 +39,12 @@ class ApiExceptionHandler {
         }
         log.error("Unexpected error: ", ex);
         return  ResponseEntity.internalServerError().body(ApiError.of("INTERNAL_ERROR"));
+    }
+
+    @ExceptionHandler(InvalidMobileNumberException.class)
+    ResponseEntity<ApiError> handleInvalidMobile(InvalidMobileNumberException ex) {
+        return ResponseEntity.badRequest()
+                .body(new ApiError("VALIDATION_FAILED", Map.of("mobileNumber", "invalid mobile number")));
     }
 }
 

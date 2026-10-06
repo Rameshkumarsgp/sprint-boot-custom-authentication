@@ -1,5 +1,6 @@
 package org.example.sprintbootcustomauthentication.auth;
 
+import org.example.sprintbootcustomauthentication.otp.InvalidMobileNumberException;
 import org.example.sprintbootcustomauthentication.otp.OtpResult;
 import org.example.sprintbootcustomauthentication.otp.OtpService;
 import org.junit.jupiter.api.Test;
@@ -167,5 +168,23 @@ class AuthControllerTest {
         // then
         result.andExpect(status().isMethodNotAllowed())
                 .andExpect(jsonPath("$.error").value("METHOD_NOT_ALLOWED"));
+    }
+
+    @Test
+    void invalidMobileFromServiceReturnsBadRequest() throws Exception {
+        // given
+        doThrow(new InvalidMobileNumberException()).when(otpService).issue(any());
+
+        // when
+        var result = mockMvc.perform(post("/auth/otp/request")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                        {"mobileNumber":"0000000000"}
+                        """));
+
+        // then
+        result.andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("VALIDATION_FAILED"))
+                .andExpect(jsonPath("$.details.mobileNumber").exists());
     }
 }

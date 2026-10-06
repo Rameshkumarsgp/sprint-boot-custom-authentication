@@ -16,15 +16,14 @@ import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.lenient;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class OtpServiceTest {
 
-    private static final String MOBILE = "9876543210";
+    private static final String MOBILE = "919876543210";
     private static final String CODE = "483921";
 
     @Mock
@@ -163,5 +162,27 @@ class OtpServiceTest {
 
         // then
         assertThat(result).isEqualTo(OtpResult.NOT_FOUND);
+    }
+
+    @Test
+    void rawNumberIsNormalizedBeforeStoring() {
+        // given
+
+        // when
+        otpService.issue("+91 98765-43210");
+
+        // then
+        assertThat(stored.get().getMobileNumber()).isEqualTo(MOBILE);
+        verify(sender).send(MOBILE, CODE);
+    }
+
+    @Test
+    void invalidNumberIsRejectedWithoutSending() {
+        // given
+
+        // when / then
+        assertThatThrownBy(() -> otpService.issue("abc"))
+                .isInstanceOf(InvalidMobileNumberException.class);
+        verifyNoInteractions(sender);
     }
 }

@@ -24,7 +24,8 @@ public class OtpService {
     private final Clock clock;
 
     @Transactional
-    public void issue(String mobileNumber) {
+    public void issue(String rawMobileNumber) {
+        String mobileNumber = MobileNumberNormalizer.normalize(rawMobileNumber);
         String code = generator.generate();
 
         repository.upsert(
@@ -37,7 +38,8 @@ public class OtpService {
     }
 
     @Transactional(isolation = Isolation.READ_COMMITTED)
-    public OtpResult verify(String mobileNumber, String code) {
+    public OtpResult verify(String rawMobileNumber, String code) {
+        String mobileNumber = MobileNumberNormalizer.normalize(rawMobileNumber);
         Otp otp = repository.findByMobileNumberForUpdate(mobileNumber).orElse(null);
 
         if (otp == null) {
