@@ -1,7 +1,7 @@
 package org.example.sprintbootcustomauthentication.auth;
 
-import shared.InvalidMobileNumberException;
 import org.example.sprintbootcustomauthentication.user.UserInfo;
+import shared.MobileNumber;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -22,7 +22,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @ActiveProfiles("dev")
 class AuthControllerTest {
 
-    private static final String MOBILE = "9876543210";
+    private static final MobileNumber MOBILE = new MobileNumber("919876543210");
 
     @Autowired
     MockMvc mockMvc;
@@ -184,20 +184,20 @@ class AuthControllerTest {
     }
 
     @Test
-    void invalidMobileFromServiceReturnsBadRequest() throws Exception {
+    void numberRejectedByNormalizerReturnsBadRequest() throws Exception {
         // given
-        doThrow(new InvalidMobileNumberException()).when(authenticationService).requestOtp(any());
 
         // when
         var result = mockMvc.perform(post("/auth/otp/request")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
-                        {"mobileNumber":"0000000000"}
+                        {"mobileNumber":"+1 234 567"}
                         """));
 
         // then
         result.andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").value("VALIDATION_FAILED"))
                 .andExpect(jsonPath("$.details.mobileNumber").exists());
+        verifyNoInteractions(authenticationService);
     }
 }

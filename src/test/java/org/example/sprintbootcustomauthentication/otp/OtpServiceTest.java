@@ -4,12 +4,12 @@ import org.example.sprintbootcustomauthentication.otp.internal.Otp;
 import org.example.sprintbootcustomauthentication.otp.internal.OtpGenerator;
 import org.example.sprintbootcustomauthentication.otp.internal.OtpHasher;
 import org.example.sprintbootcustomauthentication.otp.internal.OtpRepository;
+import shared.MobileNumber;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import shared.InvalidMobileNumberException;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -17,14 +17,16 @@ import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class OtpServiceTest {
 
-    private static final String MOBILE = "919876543210";
+    private static final MobileNumber MOBILE = new MobileNumber("919876543210");
+    private static final String NUMBER = MOBILE.value();
     private static final String CODE = "483921";
 
     @Mock
@@ -49,7 +51,7 @@ class OtpServiceTest {
         otpService = new OtpService(repository, generator, hasher, sender, properties, clock);
 
         lenient().when(generator.generate()).thenReturn(CODE);
-        lenient().when(repository.findByMobileNumberForUpdate(MOBILE))
+        lenient().when(repository.findByMobileNumberForUpdate(NUMBER))
                 .thenAnswer(invocation -> Optional.ofNullable(stored.get()));
         lenient().doAnswer(invocation -> {
             Otp otp = new Otp();
@@ -74,9 +76,9 @@ class OtpServiceTest {
         otpService.issue(MOBILE);
 
         // then
-        verify(sender).send(MOBILE, CODE);
+        verify(sender).send(NUMBER, CODE);
         Otp otp = stored.get();
-        assertThat(otp.getOtpHash()).isEqualTo(hasher.hash(MOBILE, CODE)).isNotEqualTo(CODE);
+        assertThat(otp.getOtpHash()).isEqualTo(hasher.hash(NUMBER, CODE)).isNotEqualTo(CODE);
         assertThat(otp.getExpiresAt()).isEqualTo(clock.instant().plus(Duration.ofMinutes(5)));
         assertThat(otp.getAttempts()).isZero();
     }
@@ -163,27 +165,5 @@ class OtpServiceTest {
 
         // then
         assertThat(result).isEqualTo(OtpResult.NOT_FOUND);
-    }
-
-    @Test
-    void rawNumberIsNormalizedBeforeStoring() {
-        // given
-
-        // when
-        otpService.issue("+91 98765-43210");
-
-        // then
-        assertThat(stored.get().getMobileNumber()).isEqualTo(MOBILE);
-        verify(sender).send(MOBILE, CODE);
-    }
-
-    @Test
-    void invalidNumberIsRejectedWithoutSending() {
-        // given
-
-        // when / then
-        assertThatThrownBy(() -> otpService.issue("abc"))
-                .isInstanceOf(InvalidMobileNumberException.class);
-        verifyNoInteractions(sender);
     }
 }

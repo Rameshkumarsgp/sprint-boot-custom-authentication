@@ -1,12 +1,12 @@
 package shared;
 
-public final class MobileNumberNormalizer {
-    public static final String DEFAULT_COUNTRY_CODE = "91";
+final class MobileNumberNormalizer {
+    private static final String DEFAULT_COUNTRY_CODE = "91";
 
     private MobileNumberNormalizer() {
     }
 
-    public static String normalize(String rawMobileNumber) {
+    static String normalize(String rawMobileNumber) {
         if (rawMobileNumber == null) {
             throw new InvalidMobileNumberException();
         }

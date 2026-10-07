@@ -1,27 +1,25 @@
 package org.example.sprintbootcustomauthentication.auth;
 
 import lombok.RequiredArgsConstructor;
-import shared.MobileNumberNormalizer;
 import org.example.sprintbootcustomauthentication.otp.OtpResult;
 import org.example.sprintbootcustomauthentication.otp.OtpService;
 import org.example.sprintbootcustomauthentication.user.UserInfo;
 import org.example.sprintbootcustomauthentication.user.UserService;
 import org.springframework.stereotype.Service;
+import shared.MobileNumber;
 
 @Service
 @RequiredArgsConstructor
 public class AuthenticationService {
 
-    private final  OtpService otpService;
+    private final OtpService otpService;
     private final UserService userService;
 
-    public void  requestOtp(String rawMobileNumber) {
-        otpService.issue(rawMobileNumber);
+    public void requestOtp(MobileNumber mobileNumber) {
+        otpService.issue(mobileNumber);
     }
 
-    public AuthResult verifyOtp(String rawMobileNumber, String code) {
-        String mobileNumber = MobileNumberNormalizer.normalize(rawMobileNumber);
-
+    public AuthResult verifyOtp(MobileNumber mobileNumber, String code) {
         OtpResult otpResult = otpService.verify(mobileNumber, code);
 
         return switch (otpResult) {
@@ -31,7 +29,7 @@ public class AuthenticationService {
         };
     }
 
-    private AuthResult authenticate(String mobileNumber) {
+    private AuthResult authenticate(MobileNumber mobileNumber) {
         UserInfo user = userService.findOrCreate(mobileNumber);
         if (!user.enabled()) {
             return AuthResult.of(AuthResult.Status.ACCOUNT_DISABLED);

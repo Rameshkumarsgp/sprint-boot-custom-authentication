@@ -8,7 +8,7 @@ import org.example.sprintbootcustomauthentication.otp.internal.OtpRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
-import shared.MobileNumberNormalizer;
+import shared.MobileNumber;
 
 import java.time.Clock;
 import java.time.Instant;
@@ -25,23 +25,23 @@ public class OtpService {
     private final Clock clock;
 
     @Transactional
-    public void issue(String rawMobileNumber) {
-        String mobileNumber = MobileNumberNormalizer.normalize(rawMobileNumber);
+    public void issue(MobileNumber mobileNumber) {
+        String number = mobileNumber.value();
         String code = generator.generate();
 
         repository.upsert(
-                mobileNumber,
-                hasher.hash(mobileNumber, code),
+                number,
+                hasher.hash(number, code),
                 Instant.now(clock).plus(properties.ttl()));
 
-        sender.send(mobileNumber, code);
+        sender.send(number, code);
 
     }
 
     @Transactional(isolation = Isolation.READ_COMMITTED)
-    public OtpResult verify(String rawMobileNumber, String code) {
-        String mobileNumber = MobileNumberNormalizer.normalize(rawMobileNumber);
-        Otp otp = repository.findByMobileNumberForUpdate(mobileNumber).orElse(null);
+    public OtpResult verify(MobileNumber mobileNumber, String code) {
+        String number = mobileNumber.value();
+        Otp otp = repository.findByMobileNumberForUpdate(number).orElse(null);
 
         if (otp == null) {
             return OtpResult.NOT_FOUND;
@@ -56,7 +56,7 @@ public class OtpService {
             return OtpResult.TOO_MANY_ATTEMPTS;
         }
 
-        if (hasher.matches(mobileNumber, code, otp.getOtpHash())) {
+        if (hasher.matches(number, code, otp.getOtpHash())) {
             repository.delete(otp);
             return OtpResult.VERIFIED;
         }

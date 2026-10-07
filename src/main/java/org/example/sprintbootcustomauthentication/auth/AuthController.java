@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import shared.MobileNumber;
 
 import java.util.Map;
 
@@ -20,13 +21,14 @@ public class AuthController {
 
     @PostMapping("/request")
     public ResponseEntity<Map<String, String>> request(@Valid @RequestBody OtpRequest body) {
-        authenticationService.requestOtp(body.mobileNumber());
+        authenticationService.requestOtp(MobileNumber.of(body.mobileNumber()));
         return ResponseEntity.accepted().body(Map.of("message", "OTP sent"));
     }
 
     @PostMapping("/verify")
     public ResponseEntity<?> verify(@Valid @RequestBody OtpVerifyRequest body) {
-        AuthResult result = authenticationService.verifyOtp(body.mobileNumber(), body.otp());
+        AuthResult result =
+                authenticationService.verifyOtp(MobileNumber.of(body.mobileNumber()), body.otp());
         return switch (result.status()) {
             case AUTHENTICATED ->
                     ResponseEntity.ok(new VerifyResponse(true, result.userInfo().id()));
