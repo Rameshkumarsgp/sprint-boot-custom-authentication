@@ -6,7 +6,7 @@ import org.example.sprintbootcustomauthentication.otp.OtpService;
 import org.example.sprintbootcustomauthentication.user.UserInfo;
 import org.example.sprintbootcustomauthentication.user.UserService;
 import org.springframework.stereotype.Service;
-import shared.MobileNumber;
+import org.example.sprintbootcustomauthentication.shared.MobileNumber;
 
 @Service
 @RequiredArgsConstructor

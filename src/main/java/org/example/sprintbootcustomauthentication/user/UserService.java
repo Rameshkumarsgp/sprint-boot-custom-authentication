@@ -6,7 +6,7 @@ import org.example.sprintbootcustomauthentication.user.internal.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
-import shared.MobileNumber;
+import org.example.sprintbootcustomauthentication.shared.MobileNumber;
 
 import java.time.Clock;
 import java.time.Instant;

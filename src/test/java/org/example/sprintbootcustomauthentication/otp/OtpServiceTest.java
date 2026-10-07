@@ -4,7 +4,7 @@ import org.example.sprintbootcustomauthentication.otp.internal.Otp;
 import org.example.sprintbootcustomauthentication.otp.internal.OtpGenerator;
 import org.example.sprintbootcustomauthentication.otp.internal.OtpHasher;
 import org.example.sprintbootcustomauthentication.otp.internal.OtpRepository;
-import shared.MobileNumber;
+import org.example.sprintbootcustomauthentication.shared.MobileNumber;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

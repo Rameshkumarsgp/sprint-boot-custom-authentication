@@ -1,4 +1,4 @@
-package org.example.sprintbootcustomauthentication;
+package org.example.sprintbootcustomauthentication.shared;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

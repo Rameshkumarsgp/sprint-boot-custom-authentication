@@ -1,4 +1,4 @@
-package shared;
+package org.example.sprintbootcustomauthentication.shared;
 
 public record MobileNumber(String value) {
 

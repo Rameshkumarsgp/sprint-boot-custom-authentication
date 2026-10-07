@@ -1,7 +1,7 @@
 package org.example.sprintbootcustomauthentication.auth;
 
 import org.example.sprintbootcustomauthentication.user.UserInfo;
-import shared.MobileNumber;
+import org.example.sprintbootcustomauthentication.shared.MobileNumber;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;

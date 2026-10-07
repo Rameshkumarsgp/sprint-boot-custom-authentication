@@ -1,7 +1,7 @@
 package org.example.sprintbootcustomauthentication.auth;
 
 import lombok.extern.slf4j.Slf4j;
-import shared.InvalidMobileNumberException;
+import org.example.sprintbootcustomauthentication.shared.InvalidMobileNumberException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;

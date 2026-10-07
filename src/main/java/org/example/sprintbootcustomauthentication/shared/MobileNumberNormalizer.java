@@ -1,4 +1,4 @@
-package shared;
+package org.example.sprintbootcustomauthentication.shared;
 
 final class MobileNumberNormalizer {
     private static final String DEFAULT_COUNTRY_CODE = "91";
