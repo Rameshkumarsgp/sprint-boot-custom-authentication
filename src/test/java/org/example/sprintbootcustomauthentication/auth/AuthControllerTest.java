@@ -1,11 +1,8 @@
 package org.example.sprintbootcustomauthentication.auth;
 
 import org.example.sprintbootcustomauthentication.otp.InvalidMobileNumberException;
-import org.example.sprintbootcustomauthentication.otp.OtpResult;
-import org.example.sprintbootcustomauthentication.otp.OtpService;
+import org.example.sprintbootcustomauthentication.user.UserInfo;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.EnumSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.http.MediaType;
@@ -16,15 +13,10 @@ import org.springframework.test.web.servlet.MockMvc;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(AuthController.class)
 @ActiveProfiles("dev")
@@ -36,7 +28,7 @@ class AuthControllerTest {
     MockMvc mockMvc;
 
     @MockitoBean
-    OtpService otpService;
+    AuthenticationService authenticationService;
 
     @Test
     void requestOtpReturnsAccepted() throws Exception {
@@ -52,7 +44,7 @@ class AuthControllerTest {
         // then
         result.andExpect(status().isAccepted())
                 .andExpect(jsonPath("$.message").value("OTP sent"));
-        verify(otpService).issue(MOBILE);
+        verify(authenticationService).requestOtp(MOBILE);
     }
 
     @Test
@@ -70,7 +62,7 @@ class AuthControllerTest {
         result.andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").value("VALIDATION_FAILED"))
                 .andExpect(jsonPath("$.details.mobileNumber").exists());
-        verifyNoInteractions(otpService);
+        verifyNoInteractions(authenticationService);
     }
 
     @Test
@@ -88,9 +80,10 @@ class AuthControllerTest {
     }
 
     @Test
-    void verifiedOtpReturnsOk() throws Exception {
+    void authenticatedUserReturnsOkWithUserId() throws Exception {
         // given
-        when(otpService.verify(MOBILE, "483921")).thenReturn(OtpResult.VERIFIED);
+        when(authenticationService.verifyOtp(MOBILE, "483921"))
+                .thenReturn(AuthResult.authenticated(new UserInfo(42L, "919876543210", true)));
 
         // when
         var result = mockMvc.perform(post("/auth/otp/verify")
@@ -101,14 +94,15 @@ class AuthControllerTest {
 
         // then
         result.andExpect(status().isOk())
-                .andExpect(jsonPath("$.verified").value(true));
+                .andExpect(jsonPath("$.verified").value(true))
+                .andExpect(jsonPath("$.userId").value(42));
     }
 
-    @ParameterizedTest
-    @EnumSource(value = OtpResult.class, names = {"INVALID", "EXPIRED", "NOT_FOUND"})
-    void rejectedOtpReturnsUnauthorizedWithSameMessage(OtpResult outcome) throws Exception {
+    @Test
+    void invalidOtpReturnsUnauthorized() throws Exception {
         // given
-        when(otpService.verify(MOBILE, "000000")).thenReturn(outcome);
+        when(authenticationService.verifyOtp(MOBILE, "000000"))
+                .thenReturn(AuthResult.of(AuthResult.Status.INVALID_OTP));
 
         // when
         var result = mockMvc.perform(post("/auth/otp/verify")
@@ -125,7 +119,8 @@ class AuthControllerTest {
     @Test
     void tooManyAttemptsReturns429() throws Exception {
         // given
-        when(otpService.verify(MOBILE, "000000")).thenReturn(OtpResult.TOO_MANY_ATTEMPTS);
+        when(authenticationService.verifyOtp(MOBILE, "000000"))
+                .thenReturn(AuthResult.of(AuthResult.Status.TOO_MANY_ATTEMPTS));
 
         // when
         var result = mockMvc.perform(post("/auth/otp/verify")
@@ -140,10 +135,28 @@ class AuthControllerTest {
     }
 
     @Test
+    void disabledAccountReturnsForbidden() throws Exception {
+        // given
+        when(authenticationService.verifyOtp(MOBILE, "483921"))
+                .thenReturn(AuthResult.of(AuthResult.Status.ACCOUNT_DISABLED));
+
+        // when
+        var result = mockMvc.perform(post("/auth/otp/verify")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                        {"mobileNumber":"9876543210","otp":"483921"}
+                        """));
+
+        // then
+        result.andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.error").value("ACCOUNT_DISABLED"));
+    }
+
+    @Test
     void unexpectedErrorHidesInternalDetails() throws Exception {
         // given
         doThrow(new RuntimeException("select * from otp where secret=1"))
-                .when(otpService).issue(any());
+                .when(authenticationService).requestOtp(any());
 
         // when
         var result = mockMvc.perform(post("/auth/otp/request")
@@ -173,7 +186,7 @@ class AuthControllerTest {
     @Test
     void invalidMobileFromServiceReturnsBadRequest() throws Exception {
         // given
-        doThrow(new InvalidMobileNumberException()).when(otpService).issue(any());
+        doThrow(new InvalidMobileNumberException()).when(authenticationService).requestOtp(any());
 
         // when
         var result = mockMvc.perform(post("/auth/otp/request")
