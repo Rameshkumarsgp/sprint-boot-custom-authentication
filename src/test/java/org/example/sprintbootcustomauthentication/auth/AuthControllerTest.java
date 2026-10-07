@@ -1,6 +1,6 @@
 package org.example.sprintbootcustomauthentication.auth;
 
-import org.example.sprintbootcustomauthentication.otp.InvalidMobileNumberException;
+import shared.InvalidMobileNumberException;
 import org.example.sprintbootcustomauthentication.user.UserInfo;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

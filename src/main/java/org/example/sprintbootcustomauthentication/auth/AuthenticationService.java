@@ -1,7 +1,7 @@
 package org.example.sprintbootcustomauthentication.auth;
 
 import lombok.RequiredArgsConstructor;
-import org.example.sprintbootcustomauthentication.otp.MobileNumberNormalizer;
+import shared.MobileNumberNormalizer;
 import org.example.sprintbootcustomauthentication.otp.OtpResult;
 import org.example.sprintbootcustomauthentication.otp.OtpService;
 import org.example.sprintbootcustomauthentication.user.UserInfo;

@@ -1,4 +1,4 @@
-package org.example.sprintbootcustomauthentication.otp;
+package shared;
 
 public class InvalidMobileNumberException extends RuntimeException {
     public InvalidMobileNumberException() {

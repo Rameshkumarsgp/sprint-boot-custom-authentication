@@ -1,7 +1,10 @@
-package org.example.sprintbootcustomauthentication.otp;
+package shared;
 
 public final class MobileNumberNormalizer {
     public static final String DEFAULT_COUNTRY_CODE = "91";
+
+    private MobileNumberNormalizer() {
+    }
 
     public static String normalize(String rawMobileNumber) {
         if (rawMobileNumber == null) {
@@ -28,6 +31,10 @@ public final class MobileNumberNormalizer {
             } else if (digits.length() == 10) {
                 digits = DEFAULT_COUNTRY_CODE + digits;
             }
+        }
+
+        if (digits.length() < 8 || digits.length() > 15) {
+            throw new InvalidMobileNumberException();
         }
 
         return digits;
