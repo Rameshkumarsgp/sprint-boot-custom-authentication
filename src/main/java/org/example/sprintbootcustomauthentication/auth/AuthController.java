@@ -2,8 +2,6 @@ package org.example.sprintbootcustomauthentication.auth;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.example.sprintbootcustomauthentication.otp.OtpResult;
-import org.example.sprintbootcustomauthentication.otp.OtpService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -18,23 +16,26 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class AuthController {
 
-    private final OtpService otpService;
+    private final AuthenticationService authenticationService;
 
     @PostMapping("/request")
     public ResponseEntity<Map<String, String>> request(@Valid @RequestBody OtpRequest body) {
-        otpService.issue(body.mobileNumber());
+        authenticationService.requestOtp(body.mobileNumber());
         return ResponseEntity.accepted().body(Map.of("message", "OTP sent"));
     }
 
     @PostMapping("/verify")
     public ResponseEntity<?> verify(@Valid @RequestBody OtpVerifyRequest body) {
-        OtpResult result = otpService.verify(body.mobileNumber(), body.otp());
-        return switch (result) {
-            case VERIFIED -> ResponseEntity.ok(Map.of("verified", true));
+        AuthResult result = authenticationService.verifyOtp(body.mobileNumber(), body.otp());
+        return switch (result.status()) {
+            case AUTHENTICATED ->
+                    ResponseEntity.ok(new VerifyResponse(true, result.userInfo().id()));
             case TOO_MANY_ATTEMPTS -> ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
                     .body(ApiError.of("TOO_MANY_ATTEMPTS"));
-            case INVALID, EXPIRED, NOT_FOUND -> ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+            case INVALID_OTP -> ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(ApiError.of("INVALID_OR_EXPIRED_OTP"));
+            case ACCOUNT_DISABLED -> ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(ApiError.of("ACCOUNT_DISABLED"));
         };
     }
 
