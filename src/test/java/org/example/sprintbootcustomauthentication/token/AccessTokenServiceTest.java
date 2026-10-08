@@ -206,6 +206,18 @@ class AccessTokenServiceTest {
                 .isInstanceOf(InvalidTokenException.class);
     }
 
+    @Test
+    void returnedExpiryMatchesTheTokenToTheSecond() {
+        // given
+        AccessTokenService service = serviceAt(T0.plusMillis(756));
+
+        // when
+        AccessToken token = service.issue(42L);
+
+        // then
+        assertThat(service.parse(token.value()).expiresAt()).isEqualTo(token.expiresAt());
+    }
+
     @ParameterizedTest
     @NullAndEmptySource
     @ValueSource(strings = {"not-a-jwt", "a.b.c", "   "})
