@@ -16,21 +16,25 @@ import java.util.UUID;
 
 @Service
 public class AccessTokenService {
+
     private final TokenProperties properties;
     private final Clock clock;
     private final SecretKey key;
 
     public AccessTokenService(TokenProperties properties, Clock clock) {
+        //
         byte[] secret = properties.secret().getBytes(StandardCharsets.UTF_8);
         if (secret.length < 32) {
             throw new IllegalStateException("app.jwt.secret must be at least 32 bytes for HS256");
         }
+
         this.properties = properties;
         this.clock = clock;
         this.key = Keys.hmacShaKeyFor(secret);
     }
 
     public AccessToken issue(Long userId) {
+        //
         Instant now = clock.instant().truncatedTo(ChronoUnit.SECONDS);
         Instant expiresAt = now.plus(properties.accessTtl());
 
@@ -49,6 +53,7 @@ public class AccessTokenService {
 
     public AccessTokenClaims parse(String token) {
         try {
+            //
             Claims claims = Jwts.parser()
                     .verifyWith(key)
                     .requireIssuer(properties.issuer())
@@ -58,7 +63,7 @@ public class AccessTokenService {
                     .parseSignedClaims(token)
                     .getPayload();
 
-            if(claims.getExpiration() == null) {
+            if (claims.getExpiration() == null) {
                 throw new InvalidTokenException();
             }
 
@@ -71,4 +76,6 @@ public class AccessTokenService {
             throw new InvalidTokenException();
         }
     }
+
+    //
 }
