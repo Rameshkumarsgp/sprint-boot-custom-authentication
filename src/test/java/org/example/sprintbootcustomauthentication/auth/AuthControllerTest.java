@@ -1,6 +1,8 @@
 package org.example.sprintbootcustomauthentication.auth;
 
+import org.example.sprintbootcustomauthentication.security.SecurityConfig;
 import org.example.sprintbootcustomauthentication.token.AccessToken;
+import org.example.sprintbootcustomauthentication.token.AccessTokenService;
 import org.example.sprintbootcustomauthentication.token.IssuedRefreshToken;
 import org.example.sprintbootcustomauthentication.token.TokenPair;
 import org.example.sprintbootcustomauthentication.user.UserInfo;
@@ -8,6 +10,7 @@ import org.example.sprintbootcustomauthentication.shared.MobileNumber;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -24,8 +27,12 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(AuthController.class)
+@Import(SecurityConfig.class)
 @ActiveProfiles("dev")
 class AuthControllerTest {
+
+    @MockitoBean
+    AccessTokenService accessTokenService;
 
     private static final MobileNumber MOBILE = new MobileNumber("919876543210");
 
