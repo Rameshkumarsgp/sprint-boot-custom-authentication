@@ -5,6 +5,7 @@ import org.example.sprintbootcustomauthentication.shared.InvalidMobileNumberExce
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.ErrorResponse;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -39,6 +40,11 @@ class ApiExceptionHandler {
         }
         log.error("Unexpected error: ", ex);
         return  ResponseEntity.internalServerError().body(ApiError.of("INTERNAL_ERROR"));
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    ResponseEntity<ApiError> handleAccessDenied(AccessDeniedException ex) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError.of("FORBIDDEN"));
     }
 
     @ExceptionHandler(InvalidMobileNumberException.class)

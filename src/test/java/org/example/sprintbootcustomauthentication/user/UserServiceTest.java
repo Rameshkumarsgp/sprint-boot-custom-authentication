@@ -1,6 +1,9 @@
 package org.example.sprintbootcustomauthentication.user;
 
 import org.example.sprintbootcustomauthentication.shared.MobileNumber;
+import org.example.sprintbootcustomauthentication.shared.UserAuthorities;
+import org.example.sprintbootcustomauthentication.user.internal.Role;
+import org.example.sprintbootcustomauthentication.user.internal.RoleRepository;
 import org.example.sprintbootcustomauthentication.user.internal.User;
 import org.example.sprintbootcustomauthentication.user.internal.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -14,6 +17,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -30,11 +34,14 @@ class UserServiceTest {
     @Mock
     UserRepository repository;
 
+    @Mock
+    RoleRepository roleRepository;
+
     private UserService userService;
 
     @BeforeEach
     void setUp() {
-        userService = new UserService(repository, Clock.fixed(NOW, ZoneOffset.UTC));
+        userService = new UserService(repository, roleRepository, Clock.fixed(NOW, ZoneOffset.UTC));
     }
 
     private User storedUser(long id, boolean enabled) {
@@ -55,9 +62,10 @@ class UserServiceTest {
         UserInfo result = userService.findOrCreate(MOBILE);
 
         // then
-        InOrder order = inOrder(repository);
+        InOrder order = inOrder(repository, roleRepository);
         order.verify(repository).insertIfAbsent(NUMBER, NOW);
         order.verify(repository).findByMobileNumber(NUMBER);
+        order.verify(roleRepository).grantDefaultRole(5L);
         assertThat(result).isEqualTo(new UserInfo(5L, NUMBER, true));
     }
 
@@ -83,5 +91,67 @@ class UserServiceTest {
         assertThatThrownBy(() -> userService.findOrCreate(MOBILE))
                 .isInstanceOf(RuntimeException.class)
                 .hasMessageContaining("User missing");
+    }
+
+    @Test
+    void findByIdReturnsTheUser() {
+        // given
+        when(repository.findById(5L)).thenReturn(Optional.of(storedUser(5L, true)));
+
+        // when
+        Optional<UserInfo> result = userService.findById(5L);
+
+        // then
+        assertThat(result).contains(new UserInfo(5L, NUMBER, true));
+    }
+
+    @Test
+    void findByIdReturnsEmptyForAnUnknownUser() {
+        // given
+        when(repository.findById(99L)).thenReturn(Optional.empty());
+
+        // when
+        Optional<UserInfo> result = userService.findById(99L);
+
+        // then
+        assertThat(result).isEmpty();
+    }
+
+    private Role role(String name, String... permissions) {
+        Role role = new Role();
+        role.setName(name);
+        role.setPermissions(Set.of(permissions));
+        return role;
+    }
+
+    @Test
+    void authoritiesCombineAllRolesAndTheirPermissions() {
+        // given
+        User stored = storedUser(5L, true);
+        stored.setRoles(Set.of(
+                role("USER", "ACCOUNT_READ", "PROFILE_UPDATE"),
+                role("ADMIN", "ACCOUNT_READ", "USER_DELETE")));
+        when(repository.findById(5L)).thenReturn(Optional.of(stored));
+
+        // when
+        UserAuthorities result = userService.authoritiesFor(5L);
+
+        // then
+        assertThat(result.roles()).containsExactlyInAnyOrder("USER", "ADMIN");
+        assertThat(result.permissions())
+                .containsExactlyInAnyOrder("ACCOUNT_READ", "PROFILE_UPDATE", "USER_DELETE");
+    }
+
+    @Test
+    void anUnknownUserHasNoAuthorities() {
+        // given
+        when(repository.findById(99L)).thenReturn(Optional.empty());
+
+        // when
+        UserAuthorities result = userService.authoritiesFor(99L);
+
+        // then
+        assertThat(result.roles()).isEmpty();
+        assertThat(result.permissions()).isEmpty();
     }
 }

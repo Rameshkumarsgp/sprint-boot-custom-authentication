@@ -11,11 +11,14 @@ import org.example.sprintbootcustomauthentication.token.AccessTokenService;
 import org.example.sprintbootcustomauthentication.token.InvalidTokenException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
 @Slf4j
@@ -23,6 +26,7 @@ import java.util.List;
 class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private static final String BEARER_PREFIX = "Bearer ";
+    private static final String ROLE_PREFIX = "ROLE_";
 
     private final AccessTokenService accessTokenService;
 
@@ -39,8 +43,8 @@ class JwtAuthenticationFilter extends OncePerRequestFilter {
                         new AuthenticatedUser(claims.userId(), claims.tokenId(), claims.expiresAt());
 
                 SecurityContext context = SecurityContextHolder.createEmptyContext();
-                context.setAuthentication(
-                        UsernamePasswordAuthenticationToken.authenticated(principal, null, List.of()));
+                context.setAuthentication(UsernamePasswordAuthenticationToken
+                        .authenticated(principal, null, authoritiesOf(claims)));
                 SecurityContextHolder.setContext(context);
             } catch (InvalidTokenException e) {
                 log.debug("Ignoring invalid bearer token");
@@ -48,5 +52,12 @@ class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         filterChain.doFilter(request, response);
+    }
+
+    private static List<GrantedAuthority> authoritiesOf(AccessTokenClaims claims) {
+        List<GrantedAuthority> authorities = new ArrayList<>();
+        claims.roles().forEach(role -> authorities.add(new SimpleGrantedAuthority(ROLE_PREFIX + role)));
+        claims.permissions().forEach(permission -> authorities.add(new SimpleGrantedAuthority(permission)));
+        return authorities;
     }
 }

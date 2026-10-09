@@ -4,6 +4,7 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
+import org.example.sprintbootcustomauthentication.shared.UserAuthorities;
 import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
@@ -11,7 +12,10 @@ import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.Collection;
 import java.util.Date;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -34,7 +38,10 @@ public class AccessTokenService {
     }
 
     public AccessToken issue(Long userId) {
-        //
+        return issue(userId, UserAuthorities.empty());
+    }
+
+    public AccessToken issue(Long userId, UserAuthorities authorities) {
         Instant now = clock.instant().truncatedTo(ChronoUnit.SECONDS);
         Instant expiresAt = now.plus(properties.accessTtl());
 
@@ -45,6 +52,8 @@ public class AccessTokenService {
                 .subject(String.valueOf(userId))
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(expiresAt))
+                .claim("roles", authorities.roles())
+                .claim("permissions", authorities.permissions())
                 .signWith(key)
                 .compact();
 
@@ -70,12 +79,21 @@ public class AccessTokenService {
             return new AccessTokenClaims(
                     Long.valueOf(claims.getSubject()),
                     claims.getId(),
-                    claims.getExpiration().toInstant()
+                    claims.getExpiration().toInstant(),
+                    stringSet(claims.get("roles")),
+                    stringSet(claims.get("permissions"))
             );
         } catch (JwtException | IllegalArgumentException e) {
             throw new InvalidTokenException();
         }
     }
 
-    //
+    private static Set<String> stringSet(Object claim) {
+        if (!(claim instanceof Collection<?> values)) {
+            return Set.of();
+        }
+        Set<String> result = new LinkedHashSet<>();
+        values.forEach(value -> result.add(String.valueOf(value)));
+        return result;
+    }
 }

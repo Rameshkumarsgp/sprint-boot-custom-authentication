@@ -4,10 +4,11 @@ import org.example.sprintbootcustomauthentication.token.TokenPair;
 import org.example.sprintbootcustomauthentication.user.UserInfo;
 
 public record AuthResult(Status status, UserInfo userInfo, TokenPair tokens) {
-    //
+
     public enum Status {
         AUTHENTICATED,
         INVALID_OTP,
+        INVALID_REFRESH_TOKEN,
         TOO_MANY_ATTEMPTS,
         ACCOUNT_DISABLED
     }
@@ -19,6 +20,4 @@ public record AuthResult(Status status, UserInfo userInfo, TokenPair tokens) {
     static AuthResult of(Status status) {
         return new AuthResult(status, null, null);
     }
-
-    //
 }

@@ -3,6 +3,7 @@ package org.example.sprintbootcustomauthentication.token;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
+import org.example.sprintbootcustomauthentication.shared.UserAuthorities;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
@@ -15,6 +16,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.Date;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -232,5 +234,53 @@ class AccessTokenServiceTest {
         // given / when / then
         assertThatThrownBy(() -> service("too-short", "auth-service", "auth-service-api", T0))
                 .isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
+    void rolesAndPermissionsTravelInsideTheToken() {
+        // given
+        AccessTokenService service = serviceAt(T0);
+        UserAuthorities authorities =
+                new UserAuthorities(Set.of("USER"), Set.of("ACCOUNT_READ", "PROFILE_UPDATE"));
+        AccessToken token = service.issue(42L, authorities);
+
+        // when
+        AccessTokenClaims claims = service.parse(token.value());
+
+        // then
+        assertThat(claims.roles()).containsExactly("USER");
+        assertThat(claims.permissions()).containsExactlyInAnyOrder("ACCOUNT_READ", "PROFILE_UPDATE");
+    }
+
+    @Test
+    void tokenIssuedWithoutAuthoritiesHasNone() {
+        // given
+        AccessTokenService service = serviceAt(T0);
+
+        // when
+        AccessTokenClaims claims = service.parse(service.issue(42L).value());
+
+        // then
+        assertThat(claims.roles()).isEmpty();
+        assertThat(claims.permissions()).isEmpty();
+    }
+
+    @Test
+    void validlySignedTokenWithoutAuthorityClaimsParsesWithNoAuthorities() {
+        // given
+        String plain = Jwts.builder()
+                .subject("42")
+                .issuer("auth-service")
+                .audience().add("auth-service-api").and()
+                .expiration(Date.from(T0.plus(Duration.ofMinutes(15))))
+                .signWith(KEY)
+                .compact();
+
+        // when
+        AccessTokenClaims claims = serviceAt(T0).parse(plain);
+
+        // then
+        assertThat(claims.roles()).isEmpty();
+        assertThat(claims.permissions()).isEmpty();
     }
 }
