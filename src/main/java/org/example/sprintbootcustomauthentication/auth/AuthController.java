@@ -2,6 +2,8 @@ package org.example.sprintbootcustomauthentication.auth;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.example.sprintbootcustomauthentication.token.TokenPair;
+import org.springframework.http.CacheControl;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -30,8 +32,9 @@ public class AuthController {
         AuthResult result =
                 authenticationService.verifyOtp(MobileNumber.of(body.mobileNumber()), body.otp());
         return switch (result.status()) {
-            case AUTHENTICATED ->
-                    ResponseEntity.ok(new VerifyResponse(true, result.userInfo().id()));
+            case AUTHENTICATED -> ResponseEntity.ok()
+                    .cacheControl(CacheControl.noStore())
+                    .body(toResponse(result));
             case TOO_MANY_ATTEMPTS -> ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
                     .body(ApiError.of("TOO_MANY_ATTEMPTS"));
             case INVALID_OTP -> ResponseEntity.status(HttpStatus.UNAUTHORIZED)
@@ -41,5 +44,13 @@ public class AuthController {
         };
     }
 
-    //
+    private VerifyResponse toResponse(AuthResult result) {
+        TokenPair tokens = result.tokens();
+        return new VerifyResponse(
+                "Bearer",
+                tokens.accessToken().value(),
+                tokens.expiresInSeconds(),
+                tokens.refreshToken().value(),
+                result.userInfo().id());
+    }
 }

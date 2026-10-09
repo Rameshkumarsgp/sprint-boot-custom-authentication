@@ -1,5 +1,8 @@
 package org.example.sprintbootcustomauthentication.auth;
 
+import org.example.sprintbootcustomauthentication.token.AccessToken;
+import org.example.sprintbootcustomauthentication.token.IssuedRefreshToken;
+import org.example.sprintbootcustomauthentication.token.TokenPair;
 import org.example.sprintbootcustomauthentication.user.UserInfo;
 import org.example.sprintbootcustomauthentication.shared.MobileNumber;
 import org.junit.jupiter.api.Test;
@@ -9,6 +12,8 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+
+import java.time.Instant;
 
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
@@ -80,10 +85,14 @@ class AuthControllerTest {
     }
 
     @Test
-    void authenticatedUserReturnsOkWithUserId() throws Exception {
+    void authenticatedUserReceivesTokens() throws Exception {
         // given
+        TokenPair tokens = new TokenPair(
+                new AccessToken("access.jwt.value", Instant.parse("2026-01-01T00:15:00Z")),
+                new IssuedRefreshToken("refresh-value", Instant.parse("2026-01-31T00:00:00Z")),
+                900);
         when(authenticationService.verifyOtp(MOBILE, "483921"))
-                .thenReturn(AuthResult.authenticated(new UserInfo(42L, "919876543210", true)));
+                .thenReturn(AuthResult.authenticated(new UserInfo(42L, "919876543210", true), tokens));
 
         // when
         var result = mockMvc.perform(post("/auth/otp/verify")
@@ -94,7 +103,11 @@ class AuthControllerTest {
 
         // then
         result.andExpect(status().isOk())
-                .andExpect(jsonPath("$.verified").value(true))
+                .andExpect(header().string("Cache-Control", "no-store"))
+                .andExpect(jsonPath("$.tokenType").value("Bearer"))
+                .andExpect(jsonPath("$.accessToken").value("access.jwt.value"))
+                .andExpect(jsonPath("$.refreshToken").value("refresh-value"))
+                .andExpect(jsonPath("$.expiresIn").value(900))
                 .andExpect(jsonPath("$.userId").value(42));
     }
 

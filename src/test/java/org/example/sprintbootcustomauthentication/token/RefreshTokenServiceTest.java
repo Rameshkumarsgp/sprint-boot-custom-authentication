@@ -1,6 +1,5 @@
 package org.example.sprintbootcustomauthentication.token;
 
-import org.example.sprintbootcustomauthentication.token.internal.IssuedRefreshToken;
 import org.example.sprintbootcustomauthentication.token.internal.RefreshToken;
 import org.example.sprintbootcustomauthentication.token.internal.RefreshTokenRepository;
 import org.junit.jupiter.api.BeforeEach;

@@ -3,6 +3,10 @@ package org.example.sprintbootcustomauthentication.auth;
 import org.example.sprintbootcustomauthentication.otp.OtpResult;
 import org.example.sprintbootcustomauthentication.otp.OtpService;
 import org.example.sprintbootcustomauthentication.shared.MobileNumber;
+import org.example.sprintbootcustomauthentication.token.AccessToken;
+import org.example.sprintbootcustomauthentication.token.IssuedRefreshToken;
+import org.example.sprintbootcustomauthentication.token.TokenPair;
+import org.example.sprintbootcustomauthentication.token.TokenService;
 import org.example.sprintbootcustomauthentication.user.UserInfo;
 import org.example.sprintbootcustomauthentication.user.UserService;
 import org.junit.jupiter.api.Test;
@@ -12,6 +16,8 @@ import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.time.Instant;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.verify;
@@ -29,6 +35,14 @@ class AuthenticationServiceTest {
 
     @Mock
     UserService userService;
+
+    @Mock
+    TokenService tokenService;
+
+    private static final TokenPair TOKENS = new TokenPair(
+            new AccessToken("access.jwt.value", Instant.parse("2026-01-01T00:15:00Z")),
+            new IssuedRefreshToken("refresh-value", Instant.parse("2026-01-31T00:00:00Z")),
+            900);
 
     @InjectMocks
     AuthenticationService authenticationService;
@@ -51,6 +65,7 @@ class AuthenticationServiceTest {
         UserInfo user = new UserInfo(7L, MOBILE.value(), true);
         when(otpService.verify(MOBILE, CODE)).thenReturn(OtpResult.VERIFIED);
         when(userService.findOrCreate(MOBILE)).thenReturn(user);
+        when(tokenService.issueFor(7L)).thenReturn(TOKENS);
 
         // when
         AuthResult result = authenticationService.verifyOtp(MOBILE, CODE);
@@ -58,6 +73,7 @@ class AuthenticationServiceTest {
         // then
         assertThat(result.status()).isEqualTo(AuthResult.Status.AUTHENTICATED);
         assertThat(result.userInfo()).isEqualTo(user);
+        assertThat(result.tokens()).isEqualTo(TOKENS);
     }
 
     @Test
@@ -72,6 +88,8 @@ class AuthenticationServiceTest {
         // then
         assertThat(result.status()).isEqualTo(AuthResult.Status.ACCOUNT_DISABLED);
         assertThat(result.userInfo()).isNull();
+        assertThat(result.tokens()).isNull();
+        verifyNoInteractions(tokenService);
     }
 
     @Test
@@ -84,7 +102,7 @@ class AuthenticationServiceTest {
 
         // then
         assertThat(result.status()).isEqualTo(AuthResult.Status.TOO_MANY_ATTEMPTS);
-        verifyNoInteractions(userService);
+        verifyNoInteractions(userService, tokenService);
     }
 
     @ParameterizedTest
@@ -99,6 +117,6 @@ class AuthenticationServiceTest {
         // then
         assertThat(result.status()).isEqualTo(AuthResult.Status.INVALID_OTP);
         assertThat(result.userInfo()).isNull();
-        verifyNoInteractions(userService);
+        verifyNoInteractions(userService, tokenService);
     }
 }
