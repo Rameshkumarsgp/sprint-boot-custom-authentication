@@ -1,1 +1,3 @@
 rootProject.name = 'sprint-boot-custom-authentication'
+
+include 'api-model'

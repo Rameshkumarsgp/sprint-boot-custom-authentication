@@ -1,0 +1,10 @@
+{
+  "version": "1.0",
+  "sources": ["model"],
+  "plugins": {
+    "openapi": {
+      "service": "example.auth#AuthService",
+      "protocol": "aws.protocols#restJson1"
+    }
+  }
+}

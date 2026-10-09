@@ -54,4 +54,9 @@ dependencyManagement {
 
 tasks.named('test') {
     useJUnitPlatform()
+
+    // The API contract test compares the controllers with the OpenAPI document generated from the Smithy model.
+    dependsOn ':api-model:smithyBuild'
+    systemProperty 'openapi.file',
+            "${project(':api-model').layout.buildDirectory.get().asFile}/smithyprojections/api-model/source/openapi/AuthService.openapi.json"
 }

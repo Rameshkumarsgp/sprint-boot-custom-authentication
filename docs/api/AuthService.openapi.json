@@ -1,0 +1,468 @@
+{
+    "openapi": "3.0.2",
+    "info": {
+        "title": "Custom Authentication API",
+        "version": "2026-10-09",
+        "description": "Mobile number + one-time password authentication API.\n\nLogin is a two-step flow: request an OTP, then verify it to receive an access token\n(a short-lived JWT) and a refresh token (opaque, single use, rotated on every refresh)."
+    },
+    "paths": {
+        "/auth/logout": {
+            "post": {
+                "description": "Revokes the session that the refresh token belongs to. Always answers 204.",
+                "operationId": "Logout",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/LogoutRequestContent"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "204": {
+                        "description": "Logout 204 response"
+                    },
+                    "400": {
+                        "description": "ValidationFailed 400 response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ValidationFailedResponseContent"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": []
+            }
+        },
+        "/auth/otp/request": {
+            "post": {
+                "description": "Sends a one-time password to the given mobile number. Always answers 202 for a\nwell-formed number, whether or not the number is known.",
+                "operationId": "RequestOtp",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/RequestOtpRequestContent"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "202": {
+                        "description": "RequestOtp 202 response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RequestOtpResponseContent"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "ValidationFailed 400 response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ValidationFailedResponseContent"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": []
+            }
+        },
+        "/auth/otp/verify": {
+            "post": {
+                "description": "Verifies the OTP. On success the caller is authenticated and receives tokens.\nWrong, expired and unknown OTPs are indistinguishable (401).",
+                "operationId": "VerifyOtp",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/VerifyOtpRequestContent"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "VerifyOtp 200 response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/VerifyOtpResponseContent"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "ValidationFailed 400 response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ValidationFailedResponseContent"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized 401 response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/UnauthorizedResponseContent"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden 403 response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ForbiddenResponseContent"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "TooManyRequests 429 response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TooManyRequestsResponseContent"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": []
+            }
+        },
+        "/auth/token/refresh": {
+            "post": {
+                "description": "Exchanges a refresh token for a new access token and a new refresh token.\nThe presented refresh token is consumed; presenting a consumed token again revokes\nthe whole session (token family).",
+                "operationId": "RefreshToken",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/RefreshTokenRequestContent"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "RefreshToken 200 response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RefreshTokenResponseContent"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "ValidationFailed 400 response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ValidationFailedResponseContent"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized 401 response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/UnauthorizedResponseContent"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden 403 response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ForbiddenResponseContent"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": []
+            }
+        },
+        "/me": {
+            "get": {
+                "description": "Returns the caller as seen from the access token.",
+                "operationId": "GetMe",
+                "responses": {
+                    "200": {
+                        "description": "GetMe 200 response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/GetMeResponseContent"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized 401 response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/UnauthorizedResponseContent"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "ErrorDetails": {
+                "type": "object",
+                "additionalProperties": {
+                    "type": "string"
+                }
+            },
+            "ForbiddenResponseContent": {
+                "type": "object",
+                "properties": {
+                    "error": {
+                        "type": "string",
+                        "description": "Machine-readable error code, for example VALIDATION_FAILED."
+                    },
+                    "details": {
+                        "$ref": "#/components/schemas/ErrorDetails"
+                    }
+                },
+                "required": [
+                    "error"
+                ]
+            },
+            "GetMeResponseContent": {
+                "type": "object",
+                "properties": {
+                    "userId": {
+                        "type": "number"
+                    },
+                    "tokenId": {
+                        "type": "string"
+                    },
+                    "expiresAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                },
+                "required": [
+                    "expiresAt",
+                    "tokenId",
+                    "userId"
+                ]
+            },
+            "LogoutRequestContent": {
+                "type": "object",
+                "properties": {
+                    "refreshToken": {
+                        "type": "string",
+                        "maxLength": 200,
+                        "minLength": 1
+                    }
+                },
+                "required": [
+                    "refreshToken"
+                ]
+            },
+            "RefreshTokenRequestContent": {
+                "type": "object",
+                "properties": {
+                    "refreshToken": {
+                        "type": "string",
+                        "maxLength": 200,
+                        "minLength": 1
+                    }
+                },
+                "required": [
+                    "refreshToken"
+                ]
+            },
+            "RefreshTokenResponseContent": {
+                "type": "object",
+                "properties": {
+                    "tokenType": {
+                        "type": "string",
+                        "description": "Always \"Bearer\"."
+                    },
+                    "accessToken": {
+                        "type": "string",
+                        "description": "Short-lived signed JWT (15 minutes by default)."
+                    },
+                    "expiresIn": {
+                        "type": "number",
+                        "description": "Lifetime of the access token in seconds."
+                    },
+                    "refreshToken": {
+                        "type": "string",
+                        "description": "Opaque single-use token (30 days by default)."
+                    },
+                    "userId": {
+                        "type": "number"
+                    }
+                },
+                "required": [
+                    "accessToken",
+                    "expiresIn",
+                    "refreshToken",
+                    "tokenType",
+                    "userId"
+                ]
+            },
+            "RequestOtpRequestContent": {
+                "type": "object",
+                "properties": {
+                    "mobileNumber": {
+                        "type": "string",
+                        "pattern": "^[+0-9()\\-\\s]{10,20}$",
+                        "description": "Mobile number in any common format; it is normalized to country-code digits."
+                    }
+                },
+                "required": [
+                    "mobileNumber"
+                ]
+            },
+            "RequestOtpResponseContent": {
+                "type": "object",
+                "properties": {
+                    "message": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "message"
+                ]
+            },
+            "TooManyRequestsResponseContent": {
+                "type": "object",
+                "properties": {
+                    "error": {
+                        "type": "string",
+                        "description": "Machine-readable error code, for example VALIDATION_FAILED."
+                    },
+                    "details": {
+                        "$ref": "#/components/schemas/ErrorDetails"
+                    }
+                },
+                "required": [
+                    "error"
+                ]
+            },
+            "UnauthorizedResponseContent": {
+                "type": "object",
+                "properties": {
+                    "error": {
+                        "type": "string",
+                        "description": "Machine-readable error code, for example VALIDATION_FAILED."
+                    },
+                    "details": {
+                        "$ref": "#/components/schemas/ErrorDetails"
+                    }
+                },
+                "required": [
+                    "error"
+                ]
+            },
+            "ValidationFailedResponseContent": {
+                "type": "object",
+                "properties": {
+                    "error": {
+                        "type": "string",
+                        "description": "Machine-readable error code, for example VALIDATION_FAILED."
+                    },
+                    "details": {
+                        "$ref": "#/components/schemas/ErrorDetails"
+                    }
+                },
+                "required": [
+                    "error"
+                ]
+            },
+            "VerifyOtpRequestContent": {
+                "type": "object",
+                "properties": {
+                    "mobileNumber": {
+                        "type": "string",
+                        "pattern": "^[+0-9()\\-\\s]{10,20}$"
+                    },
+                    "otp": {
+                        "type": "string",
+                        "pattern": "^\\d{6}$"
+                    }
+                },
+                "required": [
+                    "mobileNumber",
+                    "otp"
+                ]
+            },
+            "VerifyOtpResponseContent": {
+                "type": "object",
+                "properties": {
+                    "tokenType": {
+                        "type": "string",
+                        "description": "Always \"Bearer\"."
+                    },
+                    "accessToken": {
+                        "type": "string",
+                        "description": "Short-lived signed JWT (15 minutes by default)."
+                    },
+                    "expiresIn": {
+                        "type": "number",
+                        "description": "Lifetime of the access token in seconds."
+                    },
+                    "refreshToken": {
+                        "type": "string",
+                        "description": "Opaque single-use token (30 days by default)."
+                    },
+                    "userId": {
+                        "type": "number"
+                    }
+                },
+                "required": [
+                    "accessToken",
+                    "expiresIn",
+                    "refreshToken",
+                    "tokenType",
+                    "userId"
+                ]
+            }
+        },
+        "securitySchemes": {
+            "smithy.api.httpBearerAuth": {
+                "type": "http",
+                "description": "HTTP Bearer authentication",
+                "scheme": "Bearer"
+            }
+        }
+    },
+    "security": [
+        {
+            "smithy.api.httpBearerAuth": []
+        }
+    ]
+}

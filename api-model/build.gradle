@@ -1,0 +1,24 @@
+plugins {
+    id 'java-library'
+    id 'software.amazon.smithy.gradle.smithy-base' version '1.5.0'
+}
+
+repositories {
+    mavenCentral()
+}
+
+def smithyVersion = '1.74.0'
+
+dependencies {
+    implementation "software.amazon.smithy:smithy-model:${smithyVersion}"
+    implementation "software.amazon.smithy:smithy-aws-traits:${smithyVersion}"
+    smithyBuild "software.amazon.smithy:smithy-openapi:${smithyVersion}"
+    smithyBuild "software.amazon.smithy:smithy-aws-traits:${smithyVersion}"
+}
+
+// Copies the generated OpenAPI document into docs/api so it is browsable in the repository.
+tasks.register('publishOpenApi', Copy) {
+    dependsOn 'smithyBuild'
+    from layout.buildDirectory.dir('smithyprojections/api-model/source/openapi')
+    into rootProject.layout.projectDirectory.dir('docs/api')
+}
